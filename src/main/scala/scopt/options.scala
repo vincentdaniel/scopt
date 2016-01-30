@@ -1,7 +1,9 @@
-package scopt
+package com.github.vincentdaniel.scopt
 
 import java.net.UnknownHostException
 import java.text.ParseException
+
+import com.github.vincentdaniel.util.TypeSafeEqualOps._
 
 import scala.collection.mutable.ListBuffer
 
@@ -9,7 +11,7 @@ trait Read[A] {
   self =>
   def arity: Int
 
-  def tokensToRead: Int = if (arity == 0) 0 else 1
+  def tokensToRead: Int = if (arity ==== 0) 0 else 1
 
   def reads: String => A
 
@@ -116,17 +118,17 @@ object Read {
 
   val sep = ","
 
-  // reads("1,2,3,4,5") == Seq(1,2,3,4,5)
+  // reads("1,2,3,4,5") ==== Seq(1,2,3,4,5)
   implicit def seqRead[A: Read]: Read[Seq[A]] = reads { (s: String) =>
     s.split(sep).map(implicitly[Read[A]].reads)
   }
 
-  // reads("1=false,2=true") == Map(1 -> false, 2 -> true)
+  // reads("1=false,2=true") ==== Map(1 -> false, 2 -> true)
   implicit def mapRead[K: Read, V: Read]: Read[Map[K, V]] = reads { (s: String) =>
     s.split(sep).map(implicitly[Read[(K, V)]].reads).toMap
   }
 
-  // reads("1=false,1=true") == List((1 -> false), (1 -> true))
+  // reads("1=false,1=true") ==== List((1 -> false), (1 -> true))
   implicit def seqTupleRead[K: Read, V: Read]: Read[Seq[(K, V)]] = reads { (s: String) =>
     s.split(sep).map(implicitly[Read[(K, V)]].reads).toSeq
   }
@@ -328,7 +330,7 @@ abstract case class OptionParser[C](programName: String) {
 
   def usage: String = {
     import OptionDef._
-    val unsorted = options filter { o => o.kind != Head && o.kind != Check && !o.isHidden }
+    val unsorted = options filter { o => (o.kind !=== Head) && (o.kind !=== Check) && !o.isHidden }
     val (unseen, xs) = unsorted partition {
       _.hasParent
     } match {
@@ -348,7 +350,7 @@ abstract case class OptionParser[C](programName: String) {
     val descriptions = xs map {
       _.usage
     }
-    (if (header == "") "" else header + NL) +
+    (if (header ==== "") "" else header + NL) +
       "Usage: " + commandExample(None) + NLNL +
       descriptions.mkString(NL)
   }
@@ -356,7 +358,7 @@ abstract case class OptionParser[C](programName: String) {
   private[scopt] def commandName(cmd: OptionDef[_, C]): String =
     (cmd.getParentId map { x =>
       (commands find {
-        _.id == x
+        _.id ==== x
       } map commandName getOrElse {
         ""
       }) + " "
@@ -371,14 +373,14 @@ abstract case class OptionParser[C](programName: String) {
       _.id
     }
     val cs = commands filter {
-      _.getParentId == parentId
+      _.getParentId ==== parentId
     }
     if (cs.nonEmpty) text += cs map {
       _.name
     } mkString("[", "|", "]")
-    val os = options.toSeq filter { case x => x.kind == Opt && x.getParentId == parentId }
+    val os = options.toSeq filter { case x => x.kind ==== Opt && x.getParentId ==== parentId }
     val as = arguments filter {
-      _.getParentId == parentId
+      _.getParentId ==== parentId
     }
     if (os.nonEmpty) text += "[options]"
     if (cs exists { case x => arguments exists {
@@ -398,21 +400,21 @@ abstract case class OptionParser[C](programName: String) {
   def failure(msg: String): Either[String, Unit] = Left(msg)
 
   protected def heads: Seq[OptionDef[_, C]] = options.toSeq filter {
-    _.kind == Head
+    _.kind ==== Head
   }
 
-  protected def nonArgs: Seq[OptionDef[_, C]] = options.toSeq filter { case x => x.kind == Opt || x.kind == Note }
+  protected def nonArgs: Seq[OptionDef[_, C]] = options.toSeq filter { case x => x.kind ==== Opt || x.kind ==== Note }
 
   protected def arguments: Seq[OptionDef[_, C]] = options.toSeq filter {
-    _.kind == Arg
+    _.kind ==== Arg
   }
 
   protected def commands: Seq[OptionDef[_, C]] = options.toSeq filter {
-    _.kind == Cmd
+    _.kind ==== Cmd
   }
 
   protected def checks: Seq[OptionDef[_, C]] = options.toSeq filter {
-    _.kind == Check
+    _.kind ==== Check
   }
 
   protected def makeDef[A: Read](kind: OptionDefKind, name: String): OptionDef[A, C] =
@@ -420,7 +422,7 @@ abstract case class OptionParser[C](programName: String) {
 
   private[scopt] def updateOption[A: Read](option: OptionDef[A, C]): OptionDef[A, C] = {
     val idx = options indexWhere {
-      _.id == option.id
+      _.id ==== option.id
     }
     if (idx > -1) options(idx) = option
     else options += option
@@ -493,7 +495,7 @@ abstract case class OptionParser[C](programName: String) {
     }
     def findCommand(cmd: String): Option[OptionDef[_, C]] =
       pendingCommands find {
-        _.name == cmd
+        _.name ==== cmd
       }
     // greedy match
     def handleShortOptions(g0: String): Unit = {
@@ -502,13 +504,13 @@ abstract case class OptionParser[C](programName: String) {
         (g, _)
       }
       } find { case (g, opt) =>
-        opt.shortOptTokens("-" + g) == 1
+        opt.shortOptTokens("-" + g) ==== 1
       } match {
         case Some(p) =>
           val (g, option) = p
           handleOccurrence(option, pendingOptions)
           handleArgument(option, "")
-          if (g0.drop(g.length) != "") {
+          if (g0.drop(g.length) !=== "") {
             handleShortOptions(g0 drop g.length)
           }
         case None => handleError("Unknown option " + "-" + g0)
@@ -542,7 +544,7 @@ abstract case class OptionParser[C](programName: String) {
           args(i) match {
             case arg if arg startsWith "--" => handleError("Unknown option " + arg)
             case arg if arg startsWith "-" =>
-              if (arg == "-") handleError("Unknown option " + arg)
+              if (arg ==== "-") handleError("Unknown option " + arg)
               else handleShortOptions(arg drop 1)
             case arg if findCommand(arg).isDefined =>
               val cmd = findCommand(arg).get
@@ -558,12 +560,12 @@ abstract case class OptionParser[C](programName: String) {
       i += 1
     }
     (pendingOptions filter { opt => opt.getMinOccurs > occurrences(opt) }) foreach { opt =>
-      if (opt.getMinOccurs == 1) reportError("Missing " + opt.shortDescription)
+      if (opt.getMinOccurs ==== 1) reportError("Missing " + opt.shortDescription)
       else reportError(opt.shortDescription.capitalize + " must be given " + opt.getMinOccurs + " times")
       _error = true
     }
     (pendingArgs filter { arg => arg.getMinOccurs > occurrences(arg) }) foreach { arg =>
-      if (arg.getMinOccurs == 1) reportError("Missing " + arg.shortDescription)
+      if (arg.getMinOccurs ==== 1) reportError("Missing " + arg.shortDescription)
       else reportError(arg.shortDescription.capitalize + "' must be given " + arg.getMinOccurs + " times")
       _error = true
     }
@@ -740,18 +742,18 @@ class OptionDef[A: Read, C](
   // number of tokens to read: 0 for no match, 2 for "--foo 1", 1 for "--foo:1"
   private[scopt] def shortOptTokens(arg: String): Int =
     _shortOpt match {
-      case Some(c) if arg == "-" + shortOptOrBlank => 1 + read.tokensToRead
+      case Some(c) if arg ==== "-" + shortOptOrBlank => 1 + read.tokensToRead
       case Some(c) if arg startsWith ("-" + shortOptOrBlank + ":") => 1
       case _ => 0
     }
 
   private[scopt] def longOptTokens(arg: String): Int =
-    if (arg == fullName) 1 + read.tokensToRead
+    if (arg ==== fullName) 1 + read.tokensToRead
     else if (arg startsWith (fullName + ":")) 1
     else 0
 
   private[scopt] def tokensToRead(i: Int, args: Seq[String]): Int =
-    if (i >= args.length || kind != Opt) 0
+    if (i >= args.length || (kind !=== Opt)) 0
     else args(i) match {
       case arg if longOptTokens(arg) > 0 => longOptTokens(arg)
       case arg if shortOptTokens(arg) > 0 => shortOptTokens(arg)
@@ -759,21 +761,21 @@ class OptionDef[A: Read, C](
     }
 
   private[scopt] def apply(i: Int, args: Seq[String]): Either[String, String] =
-    if (i >= args.length || kind != Opt) Left("Option does not match")
+    if (i >= args.length || (kind !=== Opt)) Left("Option does not match")
     else args(i) match {
-      case arg if longOptTokens(arg) == 2 || shortOptTokens(arg) == 2 =>
+      case arg if longOptTokens(arg) ==== 2 || shortOptTokens(arg) ==== 2 =>
         token(i + 1, args) map {
           Right(_)
         } getOrElse Left("Missing value after " + arg)
-      case arg if longOptTokens(arg) == 1 && read.tokensToRead == 1 =>
+      case arg if longOptTokens(arg) ==== 1 && read.tokensToRead ==== 1 =>
         Right(arg drop (fullName + ":").length)
-      case arg if shortOptTokens(arg) == 1 && read.tokensToRead == 1 =>
+      case arg if shortOptTokens(arg) ==== 1 && read.tokensToRead ==== 1 =>
         Right(arg drop ("-" + shortOptOrBlank + ":").length)
       case _ => Right("")
     }
 
   private[scopt] def token(i: Int, args: Seq[String]): Option[String] =
-    if (i >= args.length || kind != Opt) None
+    if (i >= args.length || (kind !=== Opt)) None
     else Some(args(i))
 
   private[scopt] def usage: String =
@@ -782,12 +784,12 @@ class OptionDef[A: Read, C](
       case Cmd =>
         "Command: " + _parser.commandExample(Some(this)) + NL + _desc
       case Arg => WW + name + NLTB + _desc
-      case Opt if read.arity == 2 =>
+      case Opt if read.arity ==== 2 =>
         WW + (_shortOpt map { o => "-" + o + ":" + keyValueString + " | " } getOrElse {
           ""
         }) +
           fullName + ":" + keyValueString + NLTB + _desc
-      case Opt if read.arity == 1 =>
+      case Opt if read.arity ==== 1 =>
         WW + (_shortOpt map { o => "-" + o + " " + valueString + " | " } getOrElse {
           ""
         }) +
@@ -818,7 +820,7 @@ class OptionDef[A: Read, C](
 
   private[scopt] def argName: String =
     kind match {
-      case Arg if getMinOccurs == 0 => "[" + fullName + "]"
+      case Arg if getMinOccurs ==== 0 => "[" + fullName + "]"
       case _ => fullName
     }
 }
